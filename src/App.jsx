@@ -409,4 +409,8 @@ function ManagerApp({ menus }) {
                   )}
                   {order.status === 'making' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <button onClick={() => updateStatus(order.id, 'completed')} style={{ backgroundColor: '#16A34A', color: '#FFFFFF', padding: '16px 24px', borderRadius: '12px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                      <button onClick={() => updateStatus(order.id, 'completed')} style={{ backgroundColor: '#16A34A', color: '#FFFFFF', padding: '16px 24px', borderRadius: '12px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
+                        완료
+                      </button>
+                    </div>
+                  )}
