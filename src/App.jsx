@@ -414,3 +414,37 @@ function ManagerApp({ menus }) {
                       </button>
                     </div>
                   )}
+                  {order.status === 'completed' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <button onClick={() => archiveOrder(order.id)} style={{ backgroundColor: '#374151', color: '#FFFFFF', padding: '16px 24px', borderRadius: '12px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        화면에서 지우기
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [menus, setMenus] = useState([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'menus'), (snap) => {
+      const arr = [];
+      snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
+      setMenus(arr);
+    });
+    return () => unsub();
+  }, []);
+
+  const path = window.location.pathname;
+  if (path === '/manager') return <ManagerApp menus={menus} />;
+  if (path === '/statistics') return <StatisticsApp />;
+  return <CustomerApp menus={menus} />;
+}
