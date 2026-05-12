@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Coffee, ShoppingCart, X, CheckCircle, Clock, ChevronRight, Plus, Minus, User, Users, Trash2, Undo2, BarChart3, ListPlus, Search, ArrowUpDown, Printer, Timer, Edit } from 'lucide-react';
 import { db } from './firebase';
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot, deleteDoc, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot, deleteDoc, addDoc } from 'firebase/firestore';
 
-// 💡 방금 새로 만든 통계 컴포넌트를 불러옵니다!
+// 💡 분리한 통계 컴포넌트를 불러옵니다.
 import StatisticsApp from './StatisticsApp';
 
 const colors = { bg: '#111827', panel: '#1F2937', border: '#374151', text: '#FFFFFF', textMuted: '#9CA3AF', accent: '#EAB308', danger: '#EF4444' };
@@ -177,7 +177,6 @@ function ManagerApp({ menus }) {
   const [newMenu, setNewMenu] = useState({ name: '', price: '', category: '', hasTemp: false, hasShot: false });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortType, setSortType] = useState('latest'); 
-  
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [newCustomerPoints, setNewCustomerPoints] = useState('');
 
@@ -409,17 +408,12 @@ function ManagerApp({ menus }) {
                   )}
                   {order.status === 'making' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <button onClick={() => updateStatus(order.id, 'completed')} style={{ backgroundColor: '#16A34A', color: '#FFFFFF', padding: '16px 24px', borderRadius: '12px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
-                        완료
-                      </button>
+                      <button onClick={() => updateStatus(order.id, 'completed')} style={{ backgroundColor: '#16A34A', color: '#FFFFFF', padding: '16px 24px', borderRadius: '12px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><CheckCircle size={20} /> 제조 완료</button>
+                      <button onClick={() => printReceipt(order)} style={{ backgroundColor: '#4B5563', color: '#FFFFFF', padding: '12px 24px', borderRadius: '12px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Printer size={20} /> 영수증 재출력</button>
                     </div>
                   )}
                   {order.status === 'completed' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <button onClick={() => archiveOrder(order.id)} style={{ backgroundColor: '#374151', color: '#FFFFFF', padding: '16px 24px', borderRadius: '12px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
-                        화면에서 지우기
-                      </button>
-                    </div>
+                    <button onClick={() => archiveOrder(order.id)} style={{ backgroundColor: 'transparent', color: colors.textMuted, border: `1px solid ${colors.border}`, padding: '16px 24px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}><Trash2 size={20} /> 목록에서 지우기</button>
                   )}
                 </div>
               ))}
@@ -431,20 +425,61 @@ function ManagerApp({ menus }) {
   );
 }
 
-export default function App() {
-  const [menus, setMenus] = useState([]);
-
+// ==========================================
+// 3. 디스플레이 앱 (DisplayApp)
+// ==========================================
+function DisplayApp() {
+  const [orders, setOrders] = useState([]);
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'menus'), (snap) => {
-      const arr = [];
-      snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
-      setMenus(arr);
+    const unsub = onSnapshot(collection(db, 'orders'), (snap) => {
+      const arr = []; snap.forEach(d => arr.push(d.data())); setOrders(arr);
     });
     return () => unsub();
   }, []);
 
-  const path = window.location.pathname;
+  const completedOrders = orders
+    .filter(o => o.status === 'completed' && !o.isArchived)
+    .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0))
+    .slice(0, 16)
+    .sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
+
+  return (
+    <div style={{ backgroundColor: '#000000', minHeight: '100vh', color: '#FFFFFF', padding: '40px', boxSizing: 'border-box' }}>
+      <h1 style={{ textAlign: 'center', fontSize: '56px', color: colors.accent, marginBottom: '60px', fontWeight: '900' }}>☕ 픽업 대기</h1>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '30px' }}>
+        {completedOrders.map(order => (
+          <div key={order.id} style={{ backgroundColor: '#1F2937', border: `6px solid ${colors.accent}`, borderRadius: '24px', padding: '40px 10px', textAlign: 'center', fontSize: '70px', fontWeight: 'bold' }}>
+            {order.id.replace('ORD-', '')}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 메인 라우터 (App)
+// ==========================================
+export default function App() {
+  const [menus, setMenus] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'menus'), (snap) => {
+      const arr = []; snap.forEach(d => arr.push({ id: d.id, ...d.data() })); setMenus(arr);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  if (loading) return <div style={{ backgroundColor: colors.bg, color: '#FFFFFF', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>로딩중...</div>;
+
+  const path = window.location.pathname.toLowerCase();
+  
+  // 💡 라우팅 설정: 주소에 따라 보여줄 화면을 결정합니다.
   if (path === '/manager') return <ManagerApp menus={menus} />;
-  if (path === '/statistics') return <StatisticsApp />;
+  if (path === '/display') return <DisplayApp />;
+  if (path === '/statistics' || path === '/statisticsfh') return <StatisticsApp menus={menus} />;
+  
   return <CustomerApp menus={menus} />;
 }
